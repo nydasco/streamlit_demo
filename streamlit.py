@@ -5,15 +5,25 @@ from datetime import date
 from millify import millify
 
 # Define constants
-CURRENT_DATE = date(2019, 9, 15)
-current_year = CURRENT_DATE.year
-current_month = CURRENT_DATE.month
+CURRENT_DATE = date(2019, 9, 15)  # Current date for data filtering
+current_year = CURRENT_DATE.year  # Extract the current year
+current_month = CURRENT_DATE.month  # Extract the current month
 
 # Read data
-data = db.read_csv("Sales_Product_Combined.csv")
+data = db.read_csv("Sales_Product_Combined.csv")  # Load sales data from CSV file
 
 # Define SQL query functions
+
 def get_sales_data(current_date):
+    """
+    Generates an SQL query to retrieve sales data up to the specified date.
+
+    Args:
+        current_date (date): The current date for filtering sales data.
+
+    Returns:
+        str: The SQL query string.
+    """
     return f"""
     SELECT
         "Order Date",
@@ -32,6 +42,12 @@ def get_sales_data(current_date):
     """
 
 def get_cumulative_sales():
+    """
+    Generates an SQL query to calculate cumulative sales.
+
+    Returns:
+        str: The SQL query string.
+    """
     return """
     SELECT
         "Order Day",
@@ -44,6 +60,12 @@ def get_cumulative_sales():
     """
 
 def get_cities():
+    """
+    Generates an SQL query to retrieve distinct cities. 'All Cities' is added at the top for holistic views.
+
+    Returns:
+        str: The SQL query string.
+    """
     return """
     WITH cities AS (
         SELECT '  All Cities' AS "City"
@@ -55,12 +77,24 @@ def get_cities():
     """
 
 def get_product_types():
+    """
+    Generates an SQL query to retrieve distinct product types.
+
+    Returns:
+        str: The SQL query string.
+    """
     return """
     SELECT DISTINCT "Product Type"
     FROM db_dataset
     """
 
 def get_months():
+    """
+    Generates an SQL query to retrieve distinct order months and their sort order.
+
+    Returns:
+        str: The SQL query string.
+    """
     return """
     SELECT DISTINCT "Order Month", "MonthYearSort"
     FROM db_dataset
@@ -79,9 +113,9 @@ months_list = [
     "August", "September", "October", "November", "December"
 ]
 color_discrete_map = {f"{month} {current_year}": 'grey' for month in months_list}
-color_discrete_map[f"{months_list[current_month - 1]} {current_year}"] = 'red'
+color_discrete_map[f"{months_list[current_month - 1]} {current_year}"] = 'red'  # Highlight current month in red
 if current_month > 1:
-    color_discrete_map[f"{months_list[current_month - 2]} {current_year}"] = 'orange'
+    color_discrete_map[f"{months_list[current_month - 2]} {current_year}"] = 'orange'  # Highlight previous month in orange
 
 # Streamlit page configuration
 st.set_page_config(layout="wide")
@@ -100,13 +134,13 @@ mtd_filtered_sales = db.sql(f"""
     SELECT * FROM filtered_sales WHERE DATE_TRUNC('month', "Order Date") = DATE_TRUNC('month', '{CURRENT_DATE}'::DATE)
 """)
 
-# KPIs
+# KPIs calculation
 kpi_sales_ytd = db.sql(f"""SELECT SUM("Price") AS "Price" FROM filtered_sales""").df()["Price"].iloc[0]
 kpi_sales_qty_ytd = db.sql(f"""SELECT SUM("Quantity Ordered") AS "Quantity Ordered" FROM filtered_sales""").df()["Quantity Ordered"].iloc[0]
 kpi_sales_mtd = db.sql(f"""SELECT SUM("Price") AS "Price" FROM mtd_filtered_sales""").df()["Price"].iloc[0]
 kpi_sales_qty_mtd = db.sql(f"""SELECT SUM("Quantity Ordered") AS "Quantity Ordered" FROM mtd_filtered_sales""").df()["Quantity Ordered"].iloc[0]
 
-# Histogram
+# Create a histogram of orders by month using Plotly
 hist_order_by_month = px.histogram(
     filtered_sales.df(), 
     x="Order Month", 
@@ -117,7 +151,7 @@ hist_order_by_month = px.histogram(
     color_discrete_map=color_discrete_map
 ).update_layout(height=700).update_yaxes(showticklabels=False, title="").for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
 
-# Line Chart
+# Create a line chart of cumulative sales by day using Plotly
 line_agg_sales = db.sql(get_cumulative_sales())
 line_order_by_month = px.line(
     line_agg_sales.df(), 
@@ -127,8 +161,8 @@ line_order_by_month = px.line(
     color_discrete_map=color_discrete_map
 ).update_layout(height=700, showlegend=False)
 
-# Layout
-st.title("Executive Sales Dashboard")
+# Layout the Streamlit dashboard
+st.title(f"Executive Sales Dashboard - {selected_city}")
 
 # KPI Section
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
